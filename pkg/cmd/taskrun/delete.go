@@ -31,6 +31,7 @@ import (
 	"github.com/tektoncd/cli/pkg/options"
 	trlist "github.com/tektoncd/cli/pkg/taskrun/list"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
@@ -113,6 +114,7 @@ or
 	c.Flags().BoolVarP(&opts.DeleteAllNs, "all", "", false, "Delete all TaskRuns in a namespace (default: false)")
 	c.Flags().IntVarP(&opts.Keep, "keep", "", 0, "Keep n most recent number of TaskRuns")
 	c.Flags().IntVarP(&opts.KeepSince, "keep-since", "", 0, "When deleting all TaskRuns keep the ones that has been completed since n minutes")
+	c.Flags().StringVarP(&opts.LabelSelector, "label", "", opts.LabelSelector, "A selector (label query) to filter on when running with --all, supports '=', '==', and '!='")
 	return c
 }
 
@@ -129,7 +131,7 @@ func deleteTaskRuns(s *cli.Stream, p cli.Params, trNames []string, opts *options
 		d = deleter.New("TaskRun", func(taskRunName string) error {
 			return actions.Delete(trGroupResource, cs, taskRunName, p.Namespace(), metav1.DeleteOptions{})
 		})
-		trToDelete, trToKeep, err := allTaskRunNames(cs, opts.Keep, opts.KeepSince, p.Namespace())
+		trToDelete, trToKeep, err := allTaskRunNames(cs, opts.Keep, opts.KeepSince, opts.LabelSelector, p.Namespace())
 		if err != nil {
 			return err
 		}
@@ -201,10 +203,14 @@ func taskRunLister(p cli.Params, keep int, kind string, cs *cli.Clients) func(st
 	}
 }
 
-func allTaskRunNames(cs *cli.Clients, keep, since int, ns string) ([]string, []string, error) {
+func allTaskRunNames(cs *cli.Clients, keep, since int, labelselector, ns string) ([]string, []string, error) {
 	var todelete, tokeep []string
 
-	taskRuns, err := trlist.TaskRuns(cs, metav1.ListOptions{}, ns)
+	options := v1.ListOptions{
+		LabelSelector: labelselector,
+	}
+
+	taskRuns, err := trlist.TaskRuns(cs, options, ns)
 	if err != nil {
 		return todelete, tokeep, err
 	}

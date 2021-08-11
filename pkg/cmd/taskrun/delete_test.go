@@ -68,7 +68,10 @@ func TestTaskRunDelete(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "tr0-1",
 				Namespace: "ns",
-				Labels:    map[string]string{"tekton.dev/task": "random"},
+				Labels: map[string]string{
+					"tekton.dev/task": "random",
+					"iam":             "tobedeleted",
+				},
 			},
 			Spec: v1alpha1.TaskRunSpec{
 				TaskRef: &v1alpha1.TaskRef{
@@ -498,6 +501,15 @@ func TestTaskRunDelete(t *testing.T) {
 			want:        "Are you sure you want to delete all TaskRuns related to ClusterTask \"random\" keeping 1 TaskRuns (y/n): All but 1 TaskRuns associated with ClusterTask \"random\" deleted in namespace \"ns\"\n",
 		},
 		{
+			name:        "Delete all by labels",
+			command:     []string{"rm", "--all", "-n", "ns", "--label", "iam=tobedeleted"},
+			dynamic:     seeds[5].dynamicClient,
+			input:       seeds[5].pipelineClient,
+			inputStream: strings.NewReader("y"),
+			wantError:   false,
+			want:        "Are you sure you want to delete all TaskRuns in namespace \"ns\" (y/n): All TaskRuns deleted in namespace \"ns\"\n",
+		},
+		{
 			name:        "Delete all Taskruns older than 60mn",
 			command:     []string{"delete", "-f", "--all", "--keep-since", "60", "-n", "ns"},
 			dynamic:     seeds[6].dynamicClient,
@@ -584,9 +596,12 @@ func TestTaskRunDelete_v1beta1(t *testing.T) {
 	trdata := []*v1beta1.TaskRun{
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns",
 				Name:      "tr0-1",
-				Labels:    map[string]string{"tekton.dev/task": "random"},
+				Namespace: "ns",
+				Labels: map[string]string{
+					"tekton.dev/task": "random",
+					"iam":             "tobedeleted",
+				},
 			},
 			Spec: v1beta1.TaskRunSpec{
 				TaskRef: &v1beta1.TaskRef{
@@ -970,6 +985,15 @@ func TestTaskRunDelete_v1beta1(t *testing.T) {
 			inputStream: nil,
 			wantError:   true,
 			want:        "--keep flag should not have any arguments specified with it",
+		},
+		{
+			name:        "Delete all by labels",
+			command:     []string{"rm", "--all", "-n", "ns", "--label", "iam=tobedeleted"},
+			dynamic:     seeds[5].dynamicClient,
+			input:       seeds[5].pipelineClient,
+			inputStream: strings.NewReader("y"),
+			wantError:   false,
+			want:        "Are you sure you want to delete all TaskRuns in namespace \"ns\" (y/n): All TaskRuns deleted in namespace \"ns\"\n",
 		},
 		{
 			name:        "Remove taskruns of a ClusterTask",
